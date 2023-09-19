@@ -12,6 +12,29 @@ receivers:
       - sql: 'SELECT thread_a.thread_id, thread_a.processlist_id, thread_a.processlist_user, thread_a.processlist_host, thread_a.processlist_db, thread_a.processlist_command, thread_a.processlist_state, COALESCE(statement.sql_text, thread_a.PROCESSLIST_info) AS sql_text, statement.timer_start AS event_timer_start, statement.timer_end AS event_timer_end, statement.lock_time, statement.current_schema, waits_a.event_id AS event_id, waits_a.end_event_id, IF(waits_a.thread_id IS NULL, "other", COALESCE( IF(thread_a.processlist_state = "User sleep", "User sleep", IF(waits_a.event_id = waits_a.end_event_id, "CPU", waits_a.event_name)), "CPU" ) ) AS wait_event, waits_a.operation, waits_a.timer_start AS wait_timer_start, waits_a.timer_end AS wait_timer_end, waits_a.object_schema, waits_a.object_name, waits_a.index_name, waits_a.object_type, waits_a.source FROM performance_schema.threads AS thread_a LEFT JOIN performance_schema.events_waits_current AS waits_a ON waits_a.thread_id = thread_a.thread_id LEFT JOIN performance_schema.events_statements_current AS statement ON statement.thread_id = thread_a.thread_id WHERE thread_a.processlist_state IS NOT NULL AND thread_a.processlist_command != "Sleep" AND thread_a.processlist_id != CONNECTION_ID() AND thread_a.PROCESSLIST_COMMAND != "Daemon" AND (waits_a.EVENT_NAME != "idle" OR waits_a.EVENT_NAME IS NULL) AND (waits_a.operation != "idle" OR waits_a.operation IS NULL) AND ( waits_a.event_id = ( SELECT MAX(waits_b.EVENT_ID) FROM  performance_schema.events_waits_current AS waits_b Where waits_b.thread_id = thread_a.thread_id ) OR waits_a.event_id is NULL) AND COALESCE(statement.sql_text, thread_a.PROCESSLIST_info) != ""'
         logs:
           - body_column: wait_event
+  sqlquery/metric:
+    driver: mysql
+    datasource: "annd2:password@tcp(localhost:3306)/mysql"
+    collection_interval: "10s"
+    queries:
+      - sql: "SELECT COALESCE(`SCHEMA_NAME`, 'N/A') as SCHEMA_NAME, DIGEST_TEXT, COUNT_STAR AS annd2_count_star, SUM_ROWS_SENT AS annd2_sum_rows_sent, SUM_TIMER_WAIT/1000000000 AS annd2_sum_timer_wait_ms FROM performance_schema.events_statements_summary_by_digest;"
+        metrics:
+          - metric_name: annd2_count_star
+            value_column: "annd2_count_star"
+            attribute_columns:
+              - "SCHEMA_NAME"
+              - "DIGEST_TEXT"
+          - metric_name: annd2_sum_timer_wait_ms
+            value_column: "annd2_sum_timer_wait_ms"
+            value_type: double
+            attribute_columns:
+              - "SCHEMA_NAME"
+              - "DIGEST_TEXT"
+          - metric_name: annd2_sum_rows_sent
+            value_column: "annd2_sum_rows_sent"
+            attribute_columns:
+              - "SCHEMA_NAME"
+              - "DIGEST_TEXT"
 
 
 processors:
@@ -26,9 +49,16 @@ exporters:
       num_consumers: 20
       queue_size: 1000
 
+  prometheus/1:
+    endpoint: "localhost:1111"
+
 service:
   pipelines:
-    logs:
-      receivers: [sqlquery]
+    # logs:
+    #   receivers: [sqlquery]
+    #   processors: [batch]
+    #   exporters: [elasticsearch/log]
+    metrics:
+      receivers: [sqlquery/metric]
       processors: [batch]
-      exporters: [elasticsearch/log]
+      exporters: [prometheus/1]

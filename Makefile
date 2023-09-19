@@ -1,3 +1,5 @@
+runn:
+	./bin/otelcontribcol_linux_amd64 --config ./examples/otel-config.yaml
 include ./Makefile.Common
 
 RUN_CONFIG?=local/config.yaml
