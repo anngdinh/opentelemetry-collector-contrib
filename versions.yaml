@@ -21,7 +21,7 @@ module-sets:
       - github.com/open-telemetry/opentelemetry-collector-contrib/examples/demo/client
       - github.com/open-telemetry/opentelemetry-collector-contrib/examples/demo/server
 
-      - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter
+      # - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
