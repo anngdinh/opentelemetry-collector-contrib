@@ -111,6 +111,7 @@ module-sets:
 
       - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkametricsreceiver
       - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver
+      - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver
       - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlqueryreceiver
 
       - github.com/open-telemetry/opentelemetry-collector-contrib/testbed
