@@ -6,7 +6,9 @@ package sqlqueryreceiver // import "github.com/open-telemetry/opentelemetry-coll
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -287,6 +289,17 @@ func (queryReceiver *logsQueryReceiver) collect(ctx context.Context) (plog.Logs,
 		for _, row := range rows {
 			logRecord := scopeLogs.AppendEmpty()
 			rowToLog(row, logsConfig, logRecord)
+
+			raw := map[string]any{}
+			for key, value := range row {
+				// fmt.Printf("Key: %s  Value: %s\n", key, value)
+				raw[key] = value
+			}
+			err := logRecord.Attributes().FromRaw(raw)
+			if err != nil {
+				errs = multierr.Append(errs, err)
+			}
+
 			logRecord.SetObservedTimestamp(observedAt)
 			if logsConfigIndex == 0 {
 				errs = multierr.Append(errs, queryReceiver.storeTrackingValue(ctx, row))
@@ -310,8 +323,25 @@ func (queryReceiver *logsQueryReceiver) storeTrackingValue(ctx context.Context, 
 	return nil
 }
 
-func rowToLog(row stringMap, config LogsCfg, logRecord plog.LogRecord) {
-	logRecord.Body().SetStr(row[config.BodyColumn])
+func rowToLog(row stringMap, _ LogsCfg, logRecord plog.LogRecord) {
+	rowInterface := make(map[string]interface{})
+	for key, value := range row {
+		rowInterface[key] = value
+		// check if can convert to int
+		if intValue, err := strconv.Atoi(value); err == nil {
+			rowInterface[key] = intValue
+		}
+		// check if can convert to float
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			rowInterface[key] = floatValue
+		}
+	}
+	jsonStr, _ := json.Marshal(rowInterface)
+	err := logRecord.Body().FromRaw(jsonStr) // .SetStr(string(jsonStr))
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	logRecord.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 }
 
 func (queryReceiver *logsQueryReceiver) shutdown(_ context.Context) {

@@ -60,5 +60,6 @@ func (cl dbSQLClient) queryRows(ctx context.Context, args ...any) ([]stringMap, 
 		}
 		out = append(out, sm)
 	}
+	// return out, nil
 	return out, warnings
 }
